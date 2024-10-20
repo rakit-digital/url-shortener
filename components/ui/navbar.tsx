@@ -12,7 +12,7 @@ import {
     NavigationMenuList,
     NavigationMenuTrigger,
 } from './navigation-menu';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils'; // utility function for classnames
 
 const menuItems = [
     { href: '/profile', label: 'Profile' },
@@ -42,14 +42,14 @@ export default function Navbar() {
                 <div>
                     {user ? (
                         <div className="flex items-center space-x-4">
-                            <span className="text-white mr-4">Welcome, {user.displayName || user.email}</span>
-                            <Link href="/dashboard" className="text-white hover:text-gray-200 transition-colors">
+                            <span className="text-white text-base mr-4">Welcome, {user.displayName || user.email}</span>
+                            <Link href="/dashboard" className="text-white text-base hover:text-gray-200 transition-colors">
                                 Dashboard
                             </Link>
                             <NavigationMenu>
                                 <NavigationMenuList>
                                     <NavigationMenuItem>
-                                        <NavigationMenuTrigger className={cn('text-white hover:text-gray-200 bg-primary transition-colors')}>
+                                        <NavigationMenuTrigger className={cn('text-white text-base hover:text-gray-200 bg-primary transition-colors')}>
                                             Menu
                                         </NavigationMenuTrigger>
                                         <NavigationMenuContent className="shadow-md rounded-md bg-secondary p-2">
@@ -60,7 +60,7 @@ export default function Navbar() {
                                                 <li>
                                                     <button
                                                         onClick={handleLogout}
-                                                        className="block w-full text-left px-4 py-2 text-black hover:bg-gray-100 rounded-md"
+                                                        className="block w-full text-left px-4 py-2 text-base text-black hover:bg-gray-100 rounded-md"
                                                     >
                                                         Logout
                                                     </button>
@@ -73,10 +73,10 @@ export default function Navbar() {
                         </div>
                     ) : (
                         <div className="flex items-center space-x-4">
-                            <Link href="/login" className="text-white hover:text-gray-200 transition-colors">
+                            <Link href="/login" className="text-white text-base hover:text-gray-200 transition-colors">
                                 Login
                             </Link>
-                            <Link href="/signup" className="text-white hover:text-gray-200 transition-colors">
+                            <Link href="/signup" className="text-white text-base hover:text-gray-200 transition-colors">
                                 Sign Up
                             </Link>
                         </div>
@@ -87,12 +87,13 @@ export default function Navbar() {
     );
 }
 
+// Reusable ListItem component for menu links
 const ListItem = ({ href, title }: { href: string; title: string }) => (
     <li>
         <NavigationMenuLink asChild>
             <Link
                 href={href}
-                className="block select-none space-y-1 rounded-md px-4 py-2 leading-none text-black no-underline transition-colors hover:bg-accent hover:text-accent-foreground"
+                className="block select-none space-y-1 rounded-md px-4 py-2 text-base leading-none text-black no-underline transition-colors hover:bg-accent hover:text-accent-foreground"
             >
                 {title}
             </Link>
