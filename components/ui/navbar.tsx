@@ -31,8 +31,8 @@ export default function Navbar() {
                             <NavigationMenu>
                                 <NavigationMenuList>
                                     <NavigationMenuItem>
-                                        <NavigationMenuTrigger className="bg-primary text-white hover:text-gray-200 transition-colors">Menu</NavigationMenuTrigger>
-                                        <NavigationMenuContent className="bg-secondary shadow-md rounded-md p-2">
+                                        <NavigationMenuTrigger className="text-white hover:text-gray-200 bg-primary transition-colors">Menu</NavigationMenuTrigger>
+                                        <NavigationMenuContent className="shadow-md rounded-md bg-secondary p-2">
                                             <NavigationMenuLink asChild>
                                                 <Link href="/profile" className="block px-4 py-2 text-black hover:bg-gray-100 rounded-md">Profile</Link>
                                             </NavigationMenuLink>
