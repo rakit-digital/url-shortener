@@ -12,7 +12,7 @@ import {
     NavigationMenuList,
     NavigationMenuTrigger,
 } from './navigation-menu';
-import { cn } from '@/lib/utils'; // utility function for classnames
+import { cn } from '@/lib/utils';
 
 const menuItems = [
     { href: '/profile', label: 'Profile' },
@@ -52,8 +52,10 @@ export default function Navbar() {
                                         <NavigationMenuTrigger className={cn('text-white text-base hover:text-gray-200 bg-primary transition-colors')}>
                                             Menu
                                         </NavigationMenuTrigger>
-                                        <NavigationMenuContent className="shadow-md rounded-md bg-secondary p-2">
-                                            <ul className="grid gap-3 p-4 md:w-[400px]">
+                                        <NavigationMenuContent
+                                            className="shadow-md rounded-md bg-secondary p-2 max-w-xs max-h-60 overflow-y-auto"
+                                        >
+                                            <ul className="grid gap-3 p-2">
                                                 {menuItems.map(({ href, label }) => (
                                                     <ListItem key={href} href={href} title={label} />
                                                 ))}
@@ -87,7 +89,6 @@ export default function Navbar() {
     );
 }
 
-// Reusable ListItem component for menu links
 const ListItem = ({ href, title }: { href: string; title: string }) => (
     <li>
         <NavigationMenuLink asChild>
