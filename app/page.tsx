@@ -39,7 +39,7 @@ export default function Home() {
     return (
         <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
             <Card className="w-full max-w-md shadow-lg">
-                <CardHeader className="bg-indigo-600 text-white">
+                <CardHeader className="bg-primary text-white">
                     <CardTitle className="text-4xl font-bold">URL Shortener</CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
@@ -85,7 +85,7 @@ export default function Home() {
                         </div>
                         <Button
                             type="submit"
-                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-md"
+                            className="w-full bg-primary hover:secondary text-white font-medium py-2 rounded-md"
                         >
                             Shorten URL
                         </Button>
