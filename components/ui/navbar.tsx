@@ -20,7 +20,7 @@ export default function Navbar() {
     };
 
     return (
-        <nav className="bg-indigo-600 p-4 shadow-lg">
+        <nav className="bg-primary p-4 shadow-lg">
             <div className="container mx-auto flex justify-between items-center">
                 <Link href="/" className="text-white text-2xl font-bold hover:text-gray-200 transition-colors">URL Shortener</Link>
                 <div>
