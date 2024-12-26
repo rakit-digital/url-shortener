@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, Timestamp } from 'firebase/firestore';
 import { nanoid } from 'nanoid';
 import { db, auth } from '@/lib/firebase';
 import { isValidUrl } from '@/lib/utils';
@@ -27,13 +27,16 @@ export async function shortenUrl(originalUrl: string, customSlug?: string, expir
         return shortenUrl(originalUrl, nanoid(6), expirationDate);
     }
 
+    const now = Timestamp.now();
+    const expiration = expirationDate ? Timestamp.fromDate(new Date(expirationDate)) : null;
+
     // Create new shortened URL
     const urlDoc = await addDoc(collection(db, 'urls'), {
         originalUrl,
         slug,
         visitCount: 0,
-        createdAt: new Date(),
-        expirationDate: expirationDate ? new Date(expirationDate) : null,
+        createdAt: now,
+        expirationDate: expiration,
         userId: user?.uid ?? null,
     });
 
@@ -46,7 +49,7 @@ export async function shortenUrl(originalUrl: string, customSlug?: string, expir
         originalUrl,
         slug,
         visitCount: 0,
-        createdAt: new Date(),
-        expirationDate: expirationDate ? new Date(expirationDate) : null,
+        createdAt: now.toDate(),
+        expirationDate: expiration?.toDate() || null,
     };
 }

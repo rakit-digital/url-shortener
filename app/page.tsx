@@ -4,11 +4,12 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Copy, Trash2, ExternalLink } from 'lucide-react';
 import { formatDate, formatDateTime, isExpired } from '@/lib/utils';
 import { shortenUrl } from '@/lib/shortenUrl';
-import { deleteDoc, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { deleteDoc, doc, onSnapshot, collection, query, where } from 'firebase/firestore';
+import { db, auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 interface ShortenedUrl {
     id: string;
@@ -16,7 +17,7 @@ interface ShortenedUrl {
     originalUrl: string;
     slug: string;
     visitCount: number;
-    createdAt: string | Date;
+    createdAt: string | Date | null;
     expirationDate: string | Date | null;
 }
 
@@ -25,12 +26,58 @@ export default function Home() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [copied, setCopied] = useState<string | null>(null);
+    const [initialized, setInitialized] = useState(false);
 
     useEffect(() => {
-        const storedUrls = localStorage.getItem('shortenedUrls');
-        if (storedUrls) {
-            setUrls(JSON.parse(storedUrls));
-        }
+        // Listen for auth state changes
+        const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+            setInitialized(true);
+            if (!user) {
+                // If not logged in, try to load from localStorage
+                const storedUrls = localStorage.getItem('shortenedUrls');
+                if (storedUrls) {
+                    try {
+                        setUrls(JSON.parse(storedUrls));
+                    } catch (error) {
+                        console.error('Failed to parse stored URLs');
+                    }
+                }
+                return;
+            }
+
+            // If logged in, subscribe to Firestore updates
+            const q = query(collection(db, 'urls'), where('userId', '==', user.uid));
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                const updatedUrls = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id,
+                        ...data,
+                        shortenedUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/${data.slug}`,
+                        createdAt: data.createdAt?.toDate() || null,
+                        expirationDate: data.expirationDate?.toDate() || null,
+                    };
+                }) as ShortenedUrl[];
+                setUrls(updatedUrls);
+                localStorage.setItem('shortenedUrls', JSON.stringify(updatedUrls));
+            }, (error) => {
+                console.error('Firestore subscription error:', error);
+                // Fallback to localStorage if Firestore fails
+                const storedUrls = localStorage.getItem('shortenedUrls');
+                if (storedUrls) {
+                    try {
+                        setUrls(JSON.parse(storedUrls));
+                    } catch (error) {
+                        console.error('Failed to parse stored URLs');
+                    }
+                }
+            });
+
+            return () => unsubscribe();
+        });
+
+        // Cleanup auth subscription
+        return () => unsubscribeAuth();
     }, []);
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -45,6 +92,7 @@ export default function Home() {
 
         try {
             const result = await shortenUrl(originalUrl, customSlug, expirationDate);
+            // Update local state immediately for better UX
             const updatedUrls = [result, ...urls];
             setUrls(updatedUrls);
             localStorage.setItem('shortenedUrls', JSON.stringify(updatedUrls));
@@ -57,9 +105,13 @@ export default function Home() {
     };
 
     const handleCopy = async (url: string) => {
-        await navigator.clipboard.writeText(url);
-        setCopied(url);
-        setTimeout(() => setCopied(null), 2000);
+        try {
+            await navigator.clipboard.writeText(url);
+            setCopied(url);
+            setTimeout(() => setCopied(null), 2000);
+        } catch (error) {
+            setError('Failed to copy to clipboard');
+        }
     };
 
     const handleDelete = async (urlId: string) => {
@@ -72,6 +124,14 @@ export default function Home() {
             setError('Failed to delete URL');
         }
     };
+
+    if (!initialized) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-100">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
@@ -154,32 +214,41 @@ export default function Home() {
                                         <Card key={url.id} className="p-4">
                                             <div className="flex flex-col space-y-2">
                                                 <div className="flex items-center justify-between">
-                                                    <a
-                                                        href={url.shortenedUrl}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-primary hover:underline font-medium"
-                                                    >
-                                                        {url.shortenedUrl}
-                                                    </a>
+                                                    <div className="flex items-center space-x-2">
+                                                        <a
+                                                            href={url.shortenedUrl}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-primary hover:underline font-medium flex items-center"
+                                                        >
+                                                            {url.shortenedUrl}
+                                                            <ExternalLink className="ml-1 h-4 w-4" />
+                                                        </a>
+                                                    </div>
                                                     <div className="flex space-x-2">
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
                                                             onClick={() => handleCopy(url.shortenedUrl)}
+                                                            className="flex items-center space-x-1"
                                                         >
                                                             {copied === url.shortenedUrl ? (
                                                                 'Copied!'
                                                             ) : (
-                                                                <i className="fas fa-copy" />
+                                                                <>
+                                                                    <Copy className="h-4 w-4" />
+                                                                    <span className="sr-only">Copy URL</span>
+                                                                </>
                                                             )}
                                                         </Button>
                                                         <Button
                                                             variant="destructive"
                                                             size="sm"
                                                             onClick={() => handleDelete(url.id)}
+                                                            className="flex items-center space-x-1"
                                                         >
-                                                            <i className="fas fa-trash" />
+                                                            <Trash2 className="h-4 w-4" />
+                                                            <span className="sr-only">Delete URL</span>
                                                         </Button>
                                                     </div>
                                                 </div>
@@ -188,7 +257,7 @@ export default function Home() {
                                                 </div>
                                                 <div className="flex justify-between text-sm text-gray-500">
                                                     <span>Created: {formatDateTime(url.createdAt)}</span>
-                                                    <span>Visits: {url.visitCount}</span>
+                                                    <span>Visits: {url.visitCount || 0}</span>
                                                     {url.expirationDate && (
                                                         <span className={isExpired(url.expirationDate) ? 'text-red-500' : ''}>
                                                             Expires: {formatDate(url.expirationDate)}
