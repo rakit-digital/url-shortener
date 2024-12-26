@@ -3,113 +3,207 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import "@fortawesome/fontawesome-free/css/all.css";
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2 } from 'lucide-react';
+import { formatDate, isExpired } from '@/lib/utils';
 import { shortenUrl } from '@/lib/shortenUrl';
+import { deleteDoc, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+interface ShortenedUrl {
+    id: string;
+    shortenedUrl: string;
+    originalUrl: string;
+    slug: string;
+    visitCount: number;
+    createdAt: Date;
+    expirationDate: Date | null;
+}
 
 export default function Home() {
-    const [shortenedUrl, setShortenedUrl] = useState<string | null>(null);
-    const [shortenedUrls, setShortenedUrls] = useState<string[]>([]);
+    const [urls, setUrls] = useState<ShortenedUrl[]>([]);
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [copied, setCopied] = useState<string | null>(null);
 
     useEffect(() => {
         const storedUrls = localStorage.getItem('shortenedUrls');
         if (storedUrls) {
-            setShortenedUrls(JSON.parse(storedUrls));
+            setUrls(JSON.parse(storedUrls));
         }
     }, []);
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        setError(null);
+        setLoading(true);
+
         const formData = new FormData(event.currentTarget);
         const originalUrl = formData.get('originalUrl') as string;
         const customSlug = formData.get('customSlug') as string;
         const expirationDate = formData.get('expirationDate') as string;
 
         try {
-            const shortenedUrl = await shortenUrl(originalUrl, customSlug, expirationDate);
-            setShortenedUrl(shortenedUrl);
-            const updatedUrls = [...shortenedUrls, shortenedUrl];
-            setShortenedUrls(updatedUrls);
+            const result = await shortenUrl(originalUrl, customSlug, expirationDate);
+            const updatedUrls = [result, ...urls];
+            setUrls(updatedUrls);
+            localStorage.setItem('shortenedUrls', JSON.stringify(updatedUrls));
+            (event.target as HTMLFormElement).reset();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : 'An error occurred');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCopy = async (url: string) => {
+        await navigator.clipboard.writeText(url);
+        setCopied(url);
+        setTimeout(() => setCopied(null), 2000);
+    };
+
+    const handleDelete = async (urlId: string) => {
+        try {
+            await deleteDoc(doc(db, 'urls', urlId));
+            const updatedUrls = urls.filter(url => url.id !== urlId);
+            setUrls(updatedUrls);
             localStorage.setItem('shortenedUrls', JSON.stringify(updatedUrls));
         } catch (error) {
-            // @ts-expect-error any
-            console.error(error.message);
+            setError('Failed to delete URL');
         }
     };
 
     return (
-        <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
-            <Card className="w-full max-w-md shadow-lg">
-                <CardHeader className="bg-primary text-white">
-                    <CardTitle className="text-4xl font-bold">URL Shortener</CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                    <CardDescription className="mb-4 text-gray-700">
-                        Easily shorten your URLs and track their usage.
-                    </CardDescription>
-                    <form className="space-y-4" onSubmit={handleSubmit}>
-                        <div>
-                            <label htmlFor="originalUrl" className="block text-sm font-medium text-gray-700">
-                                Original URL
-                            </label>
-                            <Input
-                                type="url"
-                                id="originalUrl"
-                                name="originalUrl"
-                                className="mt-1 block w-full"
-                                placeholder="Enter the original URL"
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label htmlFor="customSlug" className="block text-sm font-medium text-gray-700">
-                                Custom Slug (optional)
-                            </label>
-                            <Input
-                                type="text"
-                                id="customSlug"
-                                name="customSlug"
-                                className="mt-1 block w-full"
-                                placeholder="Enter a custom slug"
-                            />
-                        </div>
-                        <div>
-                            <label htmlFor="expirationDate" className="block text-sm font-medium text-gray-700">
-                                Expiration Date (optional)
-                            </label>
-                            <Input
-                                type="date"
-                                id="expirationDate"
-                                name="expirationDate"
-                                className="mt-1 block w-full"
-                            />
-                        </div>
-                        <Button
-                            type="submit"
-                            className="w-full bg-primary hover:secondary text-white font-medium py-2 rounded-md"
-                        >
-                            Shorten URL
-                        </Button>
-                    </form>
-                    {shortenedUrl && (
-                        <div className="mt-4 p-4 bg-green-100 text-green-800 rounded-md">
-                            <p>Shortened URL: <a href={shortenedUrl} className="text-blue-600 underline">{shortenedUrl}</a></p>
-                        </div>
-                    )}
-                    {shortenedUrls.length > 0 && (
-                        <div className="mt-4">
-                            <h2 className="text-lg font-medium text-gray-700">Your Shortened URLs:</h2>
-                            <ul className="list-none space-y-2">
-                                {shortenedUrls.map((url, index) => (
-                                    <li key={index} className="flex items-center">
-                                        <i className="fas fa-link text-indigo-600 mr-2"></i>
-                                        <a href={url} className="text-blue-600 underline">{url}</a>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+        <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-3xl mx-auto">
+                <Card className="shadow-lg">
+                    <CardHeader className="bg-primary text-white">
+                        <CardTitle className="text-4xl font-bold">URL Shortener</CardTitle>
+                        <CardDescription className="text-gray-100">
+                            Shorten, track, and manage your URLs
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                        <form className="space-y-4" onSubmit={handleSubmit}>
+                            <div>
+                                <label htmlFor="originalUrl" className="block text-sm font-medium text-gray-700">
+                                    Original URL
+                                </label>
+                                <Input
+                                    type="url"
+                                    id="originalUrl"
+                                    name="originalUrl"
+                                    className="mt-1"
+                                    placeholder="https://example.com"
+                                    required
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="customSlug" className="block text-sm font-medium text-gray-700">
+                                        Custom Slug (optional)
+                                    </label>
+                                    <Input
+                                        type="text"
+                                        id="customSlug"
+                                        name="customSlug"
+                                        className="mt-1"
+                                        placeholder="my-custom-url"
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="expirationDate" className="block text-sm font-medium text-gray-700">
+                                        Expiration Date (optional)
+                                    </label>
+                                    <Input
+                                        type="date"
+                                        id="expirationDate"
+                                        name="expirationDate"
+                                        className="mt-1"
+                                        min={new Date().toISOString().split('T')[0]}
+                                    />
+                                </div>
+                            </div>
+                            <Button
+                                type="submit"
+                                className="w-full"
+                                disabled={loading}
+                            >
+                                {loading ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Shortening...
+                                    </>
+                                ) : (
+                                    'Shorten URL'
+                                )}
+                            </Button>
+                        </form>
+
+                        {error && (
+                            <Alert variant="destructive" className="mt-4">
+                                <AlertDescription>{error}</AlertDescription>
+                            </Alert>
+                        )}
+
+                        {urls.length > 0 && (
+                            <div className="mt-8">
+                                <h2 className="text-xl font-semibold mb-4">Your Shortened URLs</h2>
+                                <div className="space-y-4">
+                                    {urls.map((url) => (
+                                        <Card key={url.id} className="p-4">
+                                            <div className="flex flex-col space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <a
+                                                        href={url.shortenedUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-primary hover:underline font-medium"
+                                                    >
+                                                        {url.shortenedUrl}
+                                                    </a>
+                                                    <div className="flex space-x-2">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => handleCopy(url.shortenedUrl)}
+                                                        >
+                                                            {copied === url.shortenedUrl ? (
+                                                                'Copied!'
+                                                            ) : (
+                                                                <i className="fas fa-copy" />
+                                                            )}
+                                                        </Button>
+                                                        <Button
+                                                            variant="destructive"
+                                                            size="sm"
+                                                            onClick={() => handleDelete(url.id)}
+                                                        >
+                                                            <i className="fas fa-trash" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                                <div className="text-sm text-gray-500">
+                                                    Original: {url.originalUrl}
+                                                </div>
+                                                <div className="flex justify-between text-sm text-gray-500">
+                                                    <span>Created: {formatDate(url.createdAt)}</span>
+                                                    <span>Visits: {url.visitCount}</span>
+                                                    {url.expirationDate && (
+                                                        <span className={isExpired(url.expirationDate) ? 'text-red-500' : ''}>
+                                                            Expires: {formatDate(url.expirationDate)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }
