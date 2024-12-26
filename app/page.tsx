@@ -137,16 +137,16 @@ export default function Home() {
         <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-3xl mx-auto">
                 <Card className="shadow-lg">
-                    <CardHeader className="bg-primary text-white">
+                    <CardHeader className="bg-primary text-primary-foreground">
                         <CardTitle className="text-4xl font-bold">URL Shortener</CardTitle>
-                        <CardDescription className="text-gray-100">
+                        <CardDescription className="text-primary-foreground/90">
                             Shorten, track, and manage your URLs
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="p-6">
+                    <CardContent className="p-6 space-y-6">
                         <form className="space-y-4" onSubmit={handleSubmit}>
                             <div>
-                                <label htmlFor="originalUrl" className="block text-sm font-medium text-gray-700">
+                                <label htmlFor="originalUrl" className="block text-sm font-medium text-foreground">
                                     Original URL
                                 </label>
                                 <Input
@@ -160,7 +160,7 @@ export default function Home() {
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label htmlFor="customSlug" className="block text-sm font-medium text-gray-700">
+                                    <label htmlFor="customSlug" className="block text-sm font-medium text-foreground">
                                         Custom Slug (optional)
                                     </label>
                                     <Input
@@ -172,7 +172,7 @@ export default function Home() {
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="expirationDate" className="block text-sm font-medium text-gray-700">
+                                    <label htmlFor="expirationDate" className="block text-sm font-medium text-foreground">
                                         Expiration Date (optional)
                                     </label>
                                     <Input
@@ -186,7 +186,7 @@ export default function Home() {
                             </div>
                             <Button
                                 type="submit"
-                                className="w-full"
+                                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                                 disabled={loading}
                             >
                                 {loading ? (
@@ -208,10 +208,10 @@ export default function Home() {
 
                         {urls.length > 0 && (
                             <div className="mt-8">
-                                <h2 className="text-xl font-semibold mb-4">Your Shortened URLs</h2>
+                                <h2 className="text-2xl font-semibold mb-4 text-foreground">Your Shortened URLs</h2>
                                 <div className="space-y-4">
                                     {urls.map((url) => (
-                                        <Card key={url.id} className="p-4">
+                                        <Card key={url.id} className="p-4 hover:shadow-md transition-shadow">
                                             <div className="flex flex-col space-y-2">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center space-x-2">
@@ -230,10 +230,10 @@ export default function Home() {
                                                             variant="outline"
                                                             size="sm"
                                                             onClick={() => handleCopy(url.shortenedUrl)}
-                                                            className="flex items-center space-x-1"
+                                                            className="flex items-center space-x-1 hover:bg-secondary"
                                                         >
                                                             {copied === url.shortenedUrl ? (
-                                                                'Copied!'
+                                                                <span className="text-success">Copied!</span>
                                                             ) : (
                                                                 <>
                                                                     <Copy className="h-4 w-4" />
@@ -252,14 +252,14 @@ export default function Home() {
                                                         </Button>
                                                     </div>
                                                 </div>
-                                                <div className="text-sm text-gray-500">
+                                                <div className="text-sm text-muted-foreground">
                                                     Original: {url.originalUrl}
                                                 </div>
-                                                <div className="flex justify-between text-sm text-gray-500">
+                                                <div className="flex justify-between text-sm text-muted-foreground">
                                                     <span>Created: {formatDateTime(url.createdAt)}</span>
                                                     <span>Visits: {url.visitCount || 0}</span>
                                                     {url.expirationDate && (
-                                                        <span className={isExpired(url.expirationDate) ? 'text-red-500' : ''}>
+                                                        <span className={isExpired(url.expirationDate) ? 'text-destructive' : ''}>
                                                             Expires: {formatDate(url.expirationDate)}
                                                         </span>
                                                     )}
