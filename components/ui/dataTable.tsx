@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from '.
 import { Input } from './input';
 import { Button } from './button';
 import { Copy, ExternalLink, ArrowUpDown } from 'lucide-react';
-import { formatDateTime, formatDate } from '@/lib/utils';
+import { formatDateTime, formatDate, isExpired } from '@/lib/utils';
 
 interface TableProps {
     data: Array<{
@@ -88,31 +88,30 @@ const DataTable: React.FC<TableProps> = ({ data, onCopy, onSort }) => {
                                 <TableCell>{item.visitCount}</TableCell>
                                 <TableCell>{formatDateTime(item.createdAt)}</TableCell>
                                 <TableCell>
-                                    {item.expirationDate ? (
-                                        <span className={item.expirationDate < new Date() ? 'text-destructive' : ''}>
+                                    {item.expirationDate && (
+                                        <span className={isExpired(item.expirationDate) ? 'text-destructive' : ''}>
                                             {formatDate(item.expirationDate)}
                                         </span>
-                                    ) : (
-                                        'Never'
-                                    )}
+                                    ) || 'Never'}
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex items-center space-x-2">
                                         <Button
                                             variant="ghost"
-                                            size="sm"
+                                            size="icon"
                                             onClick={() => handleCopy(item.shortenedUrl)}
-                                            className="flex items-center space-x-1 hover:bg-secondary"
+                                            className={copied === item.shortenedUrl ? 'text-green-500' : ''}
                                         >
-                                            {copied === item.shortenedUrl ? (
-                                                <span className="text-success">Copied!</span>
-                                            ) : (
-                                                <>
-                                                    <Copy className="h-4 w-4" />
-                                                    <span className="sr-only">Copy URL</span>
-                                                </>
-                                            )}
+                                            <Copy className="h-4 w-4" />
                                         </Button>
+                                        <a
+                                            href={item.shortenedUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-primary hover:underline"
+                                        >
+                                            <ExternalLink className="h-4 w-4" />
+                                        </a>
                                     </div>
                                 </TableCell>
                             </TableRow>
