@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
-import { formatDate, isExpired } from '@/lib/utils';
+import { formatDate, formatDateTime, isExpired } from '@/lib/utils';
 import { shortenUrl } from '@/lib/shortenUrl';
 import { deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -16,8 +16,8 @@ interface ShortenedUrl {
     originalUrl: string;
     slug: string;
     visitCount: number;
-    createdAt: Date;
-    expirationDate: Date | null;
+    createdAt: string | Date;
+    expirationDate: string | Date | null;
 }
 
 export default function Home() {
@@ -187,7 +187,7 @@ export default function Home() {
                                                     Original: {url.originalUrl}
                                                 </div>
                                                 <div className="flex justify-between text-sm text-gray-500">
-                                                    <span>Created: {formatDate(url.createdAt)}</span>
+                                                    <span>Created: {formatDateTime(url.createdAt)}</span>
                                                     <span>Visits: {url.visitCount}</span>
                                                     {url.expirationDate && (
                                                         <span className={isExpired(url.expirationDate) ? 'text-red-500' : ''}>
