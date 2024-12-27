@@ -4,8 +4,9 @@ import React, { useState } from 'react';
 import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from './table';
 import { Input } from './input';
 import { Button } from './button';
-import { Copy, ExternalLink, ArrowUpDown } from 'lucide-react';
+import { Copy, ExternalLink, ArrowUpDown, QrCode, Settings } from 'lucide-react';
 import { formatDateTime, formatDate, isExpired } from '@/lib/utils';
+import { Dialog, DialogTrigger } from './dialog';
 
 interface TableProps {
     data: Array<{
@@ -16,12 +17,14 @@ interface TableProps {
         createdAt: Date;
         expirationDate: Date | null;
         shortenedUrl: string;
+        isPasswordProtected?: boolean;
     }>;
     onCopy: (url: string) => void;
     onSort: (key: keyof TableProps['data'][0]) => void;
+    onSelect: (url: TableProps['data'][0]) => void;
 }
 
-const DataTable: React.FC<TableProps> = ({ data, onCopy, onSort }) => {
+const DataTable: React.FC<TableProps> = ({ data, onCopy, onSort, onSelect }) => {
     const [search, setSearch] = useState('');
     const [copied, setCopied] = useState<string | null>(null);
 
@@ -49,7 +52,7 @@ const DataTable: React.FC<TableProps> = ({ data, onCopy, onSort }) => {
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center justify-between">
                 <Input
                     placeholder="Search URLs..."
                     value={search}
@@ -112,6 +115,17 @@ const DataTable: React.FC<TableProps> = ({ data, onCopy, onSort }) => {
                                         >
                                             <ExternalLink className="h-4 w-4" />
                                         </a>
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => onSelect(item)}
+                                                >
+                                                    <Settings className="h-4 w-4" />
+                                                </Button>
+                                            </DialogTrigger>
+                                        </Dialog>
                                     </div>
                                 </TableCell>
                             </TableRow>
