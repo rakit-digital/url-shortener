@@ -1,15 +1,21 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs, query, where, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, updateDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import DataTable from '@/components/ui/dataTable';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, TrendingUp, Link as LinkIcon, Clock } from 'lucide-react';
+import { Loader2, TrendingUp, Link as LinkIcon, Clock, QrCode, Lock, Globe } from 'lucide-react';
 import { formatDateTime, formatDate, isExpired, compareDates } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import QRCode from 'qrcode';
+import { Calendar } from '@/components/ui/calendar';
+import { addDays } from 'date-fns';
+import type { SelectSingleEventHandler } from 'react-day-picker';
 
 interface UrlData {
     id: string;
@@ -19,6 +25,9 @@ interface UrlData {
     createdAt: Date;
     expirationDate: Date | null;
     shortenedUrl: string;
+    isPasswordProtected?: boolean;
+    password?: string;
+    qrCode?: string;
 }
 
 export default function Dashboard() {
@@ -29,6 +38,10 @@ export default function Dashboard() {
         key: keyof UrlData;
         direction: 'asc' | 'desc';
     }>({ key: 'createdAt', direction: 'desc' });
+    const [selectedUrl, setSelectedUrl] = useState<UrlData | null>(null);
+    const [qrCode, setQrCode] = useState<string | null>(null);
+    const [expirationDate, setExpirationDate] = useState<Date | null>(null);
+    const [dialogOpen, setDialogOpen] = useState(false);
     
     const router = useRouter();
     const auth = getAuth();
@@ -44,18 +57,20 @@ export default function Dashboard() {
                 const querySnapshot = await getDocs(q);
                 const urlsData = querySnapshot.docs.map(doc => {
                     const data = doc.data();
-                    // Ensure we have valid dates from Firestore timestamps
-                    const createdAt = data.createdAt?.toDate?.() || new Date();
-                    const expirationDate = data.expirationDate?.toDate?.() || null;
+                    const createdAt = data.createdAt?.toDate() || new Date();
+                    const expirationDate = data.expirationDate?.toDate() || null;
                     
                     return {
                         id: doc.id,
                         slug: data.slug,
                         originalUrl: data.originalUrl,
-                        visitCount: data.visitCount,
+                        visitCount: data.visitCount || 0,
                         createdAt,
                         expirationDate,
-                        shortenedUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/${data.slug}`
+                        shortenedUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/${data.slug}`,
+                        isPasswordProtected: data.isPasswordProtected || false,
+                        password: data.password || undefined,
+                        qrCode: data.qrCode || undefined
                     } satisfies UrlData;
                 });
                 setUrls(urlsData);
@@ -70,18 +85,20 @@ export default function Dashboard() {
                         const fallbackSnapshot = await getDocs(fallbackQuery);
                         const fallbackData = fallbackSnapshot.docs.map(doc => {
                             const data = doc.data();
-                            // Ensure we have valid dates from Firestore timestamps
-                            const createdAt = data.createdAt?.toDate?.() || new Date();
-                            const expirationDate = data.expirationDate?.toDate?.() || null;
+                            const createdAt = data.createdAt?.toDate() || new Date();
+                            const expirationDate = data.expirationDate?.toDate() || null;
                             
                             return {
                                 id: doc.id,
                                 slug: data.slug,
                                 originalUrl: data.originalUrl,
-                                visitCount: data.visitCount,
+                                visitCount: data.visitCount || 0,
                                 createdAt,
                                 expirationDate,
-                                shortenedUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/${data.slug}`
+                                shortenedUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/${data.slug}`,
+                                isPasswordProtected: data.isPasswordProtected || false,
+                                password: data.password || undefined,
+                                qrCode: data.qrCode || undefined
                             } satisfies UrlData;
                         });
                         const sortedData = [...fallbackData].sort((a, b) => 
@@ -125,6 +142,42 @@ export default function Dashboard() {
             key,
             direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
         }));
+    };
+
+    const generateQRCode = async (url: string) => {
+        try {
+            const qrDataUrl = await QRCode.toDataURL(url);
+            setQrCode(qrDataUrl);
+        } catch (err) {
+            console.error('Failed to generate QR code:', err);
+        }
+    };
+
+    const updateExpiration = async (urlId: string, newDate: Date | null) => {
+        try {
+            const urlRef = doc(db, 'urls', urlId);
+            await updateDoc(urlRef, {
+                expirationDate: newDate ? Timestamp.fromDate(newDate) : null
+            });
+            // Update local state
+            setUrls(prevUrls => 
+                prevUrls.map(url => 
+                    url.id === urlId ? { ...url, expirationDate: newDate } : url
+                )
+            );
+        } catch (err) {
+            console.error('Failed to update expiration:', err);
+            setError('Failed to update URL expiration');
+        }
+    };
+
+    const handleDateSelect: SelectSingleEventHandler = (date) => {
+        if (date) {
+            setExpirationDate(date);
+            if (selectedUrl) {
+                updateExpiration(selectedUrl.id, date);
+            }
+        }
     };
 
     const sortedUrls = [...urls].sort((a, b) => {
@@ -217,9 +270,51 @@ export default function Dashboard() {
                         data={sortedUrls}
                         onCopy={handleCopy}
                         onSort={handleSort}
+                        onSelect={(url) => {
+                            setSelectedUrl(url);
+                            generateQRCode(url.shortenedUrl);
+                            setExpirationDate(url.expirationDate);
+                            setDialogOpen(true);
+                        }}
                     />
                 </CardContent>
             </Card>
+
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>URL Options</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        {qrCode && (
+                            <div className="flex flex-col items-center space-y-2">
+                                <img src={qrCode} alt="QR Code" className="w-48 h-48" />
+                                <Button 
+                                    variant="outline"
+                                    onClick={() => {
+                                        const link = document.createElement('a');
+                                        link.href = qrCode;
+                                        link.download = 'qr-code.png';
+                                        link.click();
+                                    }}
+                                >
+                                    Download QR Code
+                                </Button>
+                            </div>
+                        )}
+                        <div className="space-y-2">
+                            <h4 className="font-medium">Set Expiration</h4>
+                            <Calendar
+                                mode="single"
+                                selected={expirationDate || undefined}
+                                onSelect={handleDateSelect}
+                                disabled={{ before: new Date() }}
+                                initialFocus
+                            />
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
