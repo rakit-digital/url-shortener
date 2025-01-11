@@ -8,14 +8,14 @@ import { useRouter } from 'next/navigation';
 import DataTable from '@/components/ui/dataTable';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, TrendingUp, Link as LinkIcon, Clock, QrCode, Lock, Globe } from 'lucide-react';
+import { Loader2, TrendingUp, Link as LinkIcon, Clock, Lock, Globe, Copy, ExternalLink } from 'lucide-react';
 import { formatDateTime, formatDate, isExpired, compareDates } from '@/lib/utils';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import QRCode from 'qrcode';
 import { Calendar } from '@/components/ui/calendar';
 import { addDays } from 'date-fns';
 import type { SelectSingleEventHandler } from 'react-day-picker';
+import { QRCodeModal } from '@/components/QRCodeModal';
 
 interface UrlData {
     id: string;
@@ -27,7 +27,6 @@ interface UrlData {
     shortenedUrl: string;
     isPasswordProtected?: boolean;
     password?: string;
-    qrCode?: string;
 }
 
 export default function Dashboard() {
@@ -39,7 +38,6 @@ export default function Dashboard() {
         direction: 'asc' | 'desc';
     }>({ key: 'createdAt', direction: 'desc' });
     const [selectedUrl, setSelectedUrl] = useState<UrlData | null>(null);
-    const [qrCode, setQrCode] = useState<string | null>(null);
     const [expirationDate, setExpirationDate] = useState<Date | null>(null);
     const [dialogOpen, setDialogOpen] = useState(false);
     
@@ -69,8 +67,7 @@ export default function Dashboard() {
                         expirationDate,
                         shortenedUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/${data.slug}`,
                         isPasswordProtected: data.isPasswordProtected || false,
-                        password: data.password || undefined,
-                        qrCode: data.qrCode || undefined
+                        password: data.password || undefined
                     } satisfies UrlData;
                 });
                 setUrls(urlsData);
@@ -97,8 +94,7 @@ export default function Dashboard() {
                                 expirationDate,
                                 shortenedUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/${data.slug}`,
                                 isPasswordProtected: data.isPasswordProtected || false,
-                                password: data.password || undefined,
-                                qrCode: data.qrCode || undefined
+                                password: data.password || undefined
                             } satisfies UrlData;
                         });
                         const sortedData = [...fallbackData].sort((a, b) => 
@@ -144,22 +140,12 @@ export default function Dashboard() {
         }));
     };
 
-    const generateQRCode = async (url: string) => {
-        try {
-            const qrDataUrl = await QRCode.toDataURL(url);
-            setQrCode(qrDataUrl);
-        } catch (err) {
-            console.error('Failed to generate QR code:', err);
-        }
-    };
-
     const updateExpiration = async (urlId: string, newDate: Date | null) => {
         try {
             const urlRef = doc(db, 'urls', urlId);
             await updateDoc(urlRef, {
                 expirationDate: newDate ? Timestamp.fromDate(newDate) : null
             });
-            // Update local state
             setUrls(prevUrls => 
                 prevUrls.map(url => 
                     url.id === urlId ? { ...url, expirationDate: newDate } : url
@@ -272,8 +258,6 @@ export default function Dashboard() {
                         onSort={handleSort}
                         onSelect={(url) => {
                             setSelectedUrl(url);
-                            generateQRCode(url.shortenedUrl);
-                            setExpirationDate(url.expirationDate);
                             setDialogOpen(true);
                         }}
                     />
@@ -283,35 +267,83 @@ export default function Dashboard() {
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>URL Options</DialogTitle>
+                        <DialogTitle>URL Settings</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4">
-                        {qrCode && (
-                            <div className="flex flex-col items-center space-y-2">
-                                <img src={qrCode} alt="QR Code" className="w-48 h-48" />
-                                <Button 
-                                    variant="outline"
-                                    onClick={() => {
-                                        const link = document.createElement('a');
-                                        link.href = qrCode;
-                                        link.download = 'qr-code.png';
-                                        link.click();
-                                    }}
-                                >
-                                    Download QR Code
-                                </Button>
+                    <div className="space-y-6">
+                        {selectedUrl && (
+                            <div className="space-y-4">
+                                <div className="rounded-lg border p-3 text-sm space-y-2">
+                                    <div className="flex items-start justify-between">
+                                        <span className="text-muted-foreground">Original URL:</span>
+                                        <span className="font-medium break-all text-right">{selectedUrl.originalUrl}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-muted-foreground">Created:</span>
+                                        <span className="font-medium">{formatDateTime(selectedUrl.createdAt)}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-muted-foreground">Visit Count:</span>
+                                        <span className="font-medium">{selectedUrl.visitCount}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-muted-foreground">Expires:</span>
+                                        <span className="font-medium">
+                                            {selectedUrl.expirationDate
+                                                ? formatDate(selectedUrl.expirationDate)
+                                                : 'No expiration'}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-sm font-medium">Actions</h3>
+                                        <div className="flex items-center space-x-2">
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                className="h-8 w-8"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(selectedUrl.shortenedUrl);
+                                                }}
+                                            >
+                                                <Copy className="h-4 w-4" />
+                                                <span className="sr-only">Copy URL</span>
+                                            </Button>
+                                            <QRCodeModal url={selectedUrl.shortenedUrl} title={selectedUrl.slug} />
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                className="h-8 w-8"
+                                                asChild
+                                            >
+                                                <a href={selectedUrl.shortenedUrl} target="_blank" rel="noopener noreferrer">
+                                                    <ExternalLink className="h-4 w-4" />
+                                                    <span className="sr-only">Open URL</span>
+                                                </a>
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <h3 className="text-sm font-medium">Set Expiration</h3>
+                                    <Calendar
+                                        mode="single"
+                                        selected={expirationDate || undefined}
+                                        onSelect={(date: Date | undefined) => {
+                                            setExpirationDate(date || null);
+                                            if (selectedUrl && date) {
+                                                updateExpiration(selectedUrl.id, date);
+                                            }
+                                        }}
+                                        disabled={{ before: new Date() }}
+                                        initialFocus
+                                        className="rounded-md border"
+                                    />
+                                </div>
                             </div>
                         )}
-                        <div className="space-y-2">
-                            <h4 className="font-medium">Set Expiration</h4>
-                            <Calendar
-                                mode="single"
-                                selected={expirationDate || undefined}
-                                onSelect={handleDateSelect}
-                                disabled={{ before: new Date() }}
-                                initialFocus
-                            />
-                        </div>
                     </div>
                 </DialogContent>
             </Dialog>

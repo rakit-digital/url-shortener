@@ -4,12 +4,13 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Copy, Trash2, ExternalLink } from 'lucide-react';
+import { Loader2, Copy, Trash2, ExternalLink, QrCode } from 'lucide-react';
 import { formatDate, formatDateTime, isExpired } from '@/lib/utils';
 import { shortenUrl } from '@/lib/shortenUrl';
 import { deleteDoc, doc, onSnapshot, collection, query, where } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { QRCodeModal } from '@/components/QRCodeModal';
 
 interface ShortenedUrl {
     id: string;
@@ -215,32 +216,27 @@ export default function Home() {
                                             <div className="flex flex-col space-y-2">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center space-x-2">
-                                                        <a
-                                                            href={url.shortenedUrl}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="text-primary hover:underline font-medium flex items-center"
-                                                        >
-                                                            {url.shortenedUrl}
-                                                            <ExternalLink className="ml-1 h-4 w-4" />
-                                                        </a>
-                                                    </div>
-                                                    <div className="flex space-x-2">
                                                         <Button
                                                             variant="outline"
-                                                            size="sm"
+                                                            size="icon"
+                                                            className="h-8 w-8"
                                                             onClick={() => handleCopy(url.shortenedUrl)}
-                                                            className="flex items-center space-x-1 hover:bg-secondary"
                                                         >
-                                                            {copied === url.shortenedUrl ? (
-                                                                <span className="text-success">Copied!</span>
-                                                            ) : (
-                                                                <>
-                                                                    <Copy className="h-4 w-4" />
-                                                                    <span className="sr-only">Copy URL</span>
-                                                                </>
-                                                            )}
+                                                            <Copy className="h-4 w-4" />
                                                         </Button>
+                                                        <QRCodeModal url={url.shortenedUrl} title={url.slug} />
+                                                        <Button
+                                                            variant="outline"
+                                                            size="icon"
+                                                            className="h-8 w-8"
+                                                            asChild
+                                                        >
+                                                            <a href={url.shortenedUrl} target="_blank" rel="noopener noreferrer">
+                                                                <ExternalLink className="h-4 w-4" />
+                                                            </a>
+                                                        </Button>
+                                                    </div>
+                                                    <div className="flex space-x-2">
                                                         <Button
                                                             variant="destructive"
                                                             size="sm"
