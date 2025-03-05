@@ -1,16 +1,17 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Copy, Trash2, ExternalLink, QrCode } from 'lucide-react';
-import { formatDate, formatDateTime, isExpired } from '@/lib/utils';
-import { shortenUrl } from '@/lib/shortenUrl';
-import { deleteDoc, doc, onSnapshot, collection, query, where } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
 import { QRCodeModal } from '@/components/QRCodeModal';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { auth, db } from '@/lib/firebase';
+import { shortenUrl } from '@/lib/shortenUrl';
+import { formatDate, formatDateTime, isExpired } from '@/lib/utils';
+import { onAuthStateChanged } from 'firebase/auth';
+import { collection, deleteDoc, doc, onSnapshot, query, where } from 'firebase/firestore';
+import { Copy, ExternalLink, Loader2, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import React, { useEffect, useState } from 'react';
 
 interface ShortenedUrl {
     id: string;
@@ -28,12 +29,14 @@ export default function Home() {
     const [loading, setLoading] = useState(false);
     const [copied, setCopied] = useState<string | null>(null);
     const [initialized, setInitialized] = useState(false);
+    const [user, setUser] = useState<any>(null);
 
     useEffect(() => {
         // Listen for auth state changes
-        const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+        const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
             setInitialized(true);
-            if (!user) {
+            setUser(currentUser); // Track user authentication state
+            if (!currentUser) {
                 // If not logged in, try to load from localStorage
                 const storedUrls = localStorage.getItem('shortenedUrls');
                 if (storedUrls) {
@@ -47,7 +50,7 @@ export default function Home() {
             }
 
             // If logged in, subscribe to Firestore updates
-            const q = query(collection(db, 'urls'), where('userId', '==', user.uid));
+            const q = query(collection(db, 'urls'), where('userId', '==', currentUser.uid));
             const unsubscribe = onSnapshot(q, (snapshot) => {
                 const updatedUrls = snapshot.docs.map(doc => {
                     const data = doc.data();
@@ -145,61 +148,71 @@ export default function Home() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="p-6 space-y-6">
-                        <form className="space-y-4" onSubmit={handleSubmit}>
-                            <div>
-                                <label htmlFor="originalUrl" className="block text-sm font-medium text-foreground">
-                                    Original URL
-                                </label>
-                                <Input
-                                    type="url"
-                                    id="originalUrl"
-                                    name="originalUrl"
-                                    className="mt-1"
-                                    placeholder="https://example.com"
-                                    required
-                                />
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {user ? (
+                            <form className="space-y-4" onSubmit={handleSubmit}>
                                 <div>
-                                    <label htmlFor="customSlug" className="block text-sm font-medium text-foreground">
-                                        Custom Slug (optional)
+                                    <label htmlFor="originalUrl" className="block text-sm font-medium text-foreground">
+                                        Original URL
                                     </label>
                                     <Input
-                                        type="text"
-                                        id="customSlug"
-                                        name="customSlug"
+                                        type="url"
+                                        id="originalUrl"
+                                        name="originalUrl"
                                         className="mt-1"
-                                        placeholder="my-custom-url"
+                                        placeholder="https://example.com"
+                                        required
                                     />
                                 </div>
-                                <div>
-                                    <label htmlFor="expirationDate" className="block text-sm font-medium text-foreground">
-                                        Expiration Date (optional)
-                                    </label>
-                                    <Input
-                                        type="date"
-                                        id="expirationDate"
-                                        name="expirationDate"
-                                        className="mt-1"
-                                        min={new Date().toISOString().split('T')[0]}
-                                    />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label htmlFor="customSlug" className="block text-sm font-medium text-foreground">
+                                            Custom Slug (optional)
+                                        </label>
+                                        <Input
+                                            type="text"
+                                            id="customSlug"
+                                            name="customSlug"
+                                            className="mt-1"
+                                            placeholder="my-custom-url"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="expirationDate" className="block text-sm font-medium text-foreground">
+                                            Expiration Date (optional)
+                                        </label>
+                                        <Input
+                                            type="date"
+                                            id="expirationDate"
+                                            name="expirationDate"
+                                            className="mt-1"
+                                            min={new Date().toISOString().split('T')[0]}
+                                        />
+                                    </div>
                                 </div>
+                                <Button
+                                    type="submit"
+                                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                                    disabled={loading}
+                                >
+                                    {loading ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Shortening...
+                                        </>
+                                    ) : (
+                                        'Shorten URL'
+                                    )}
+                                </Button>
+                            </form>
+                        ) : (
+                            <div className="text-center p-6">
+                                <Alert>
+                                    <AlertDescription>
+                                        Please <Link href="/login" className="font-medium text-primary hover:underline">log in</Link> to create shortened URLs.
+                                    </AlertDescription>
+                                </Alert>
                             </div>
-                            <Button
-                                type="submit"
-                                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                                disabled={loading}
-                            >
-                                {loading ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Shortening...
-                                    </>
-                                ) : (
-                                    'Shorten URL'
-                                )}
-                            </Button>
-                        </form>
+                        )}
 
                         {error && (
                             <Alert variant="destructive" className="mt-4">

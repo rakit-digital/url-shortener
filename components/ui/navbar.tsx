@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { cn } from '@/lib/utils';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import {
     NavigationMenu,
     NavigationMenuContent,
@@ -12,7 +13,6 @@ import {
     NavigationMenuList,
     NavigationMenuTrigger,
 } from './navigation-menu';
-import { cn } from '@/lib/utils';
 
 const menuItems = [
     { href: '/profile', label: 'Profile' },
@@ -34,12 +34,10 @@ export default function Navbar() {
     };
 
     return (
-        <nav className="bg-primary p-4 shadow-lg">
-            <div className="container mx-auto flex justify-between items-center">
-                <Link href="/" className="text-white text-2xl font-bold hover:text-gray-200 transition-colors">
-                    URL Shortener
-                </Link>
-                <div>
+        <nav className="bg-primary py-4">
+            <div className="container mx-auto px-4">
+                <div className="flex justify-between items-center">
+                    <Link href="/" className="text-white text-xl font-bold">URL Shortener</Link>
                     {user ? (
                         <div className="flex items-center space-x-4">
                             <span className="text-white text-base mr-4">Welcome, {user.displayName || user.email}</span>
@@ -77,10 +75,7 @@ export default function Navbar() {
                         <div className="flex items-center space-x-4">
                             <Link href="/login" className="text-white text-base hover:text-gray-200 transition-colors">
                                 Login
-                            </Link>
-                            <Link href="/signup" className="text-white text-base hover:text-gray-200 transition-colors">
-                                Sign Up
-                            </Link>
+                                </Link>
                         </div>
                     )}
                 </div>
