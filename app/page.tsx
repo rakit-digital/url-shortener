@@ -21,7 +21,7 @@ interface ShortenedUrl {
     visitCount: number;
     createdAt: string | Date | null;
     expirationDate: string | Date | null;
-    userId: string;
+    userId: string | null; // Updated to allow null
     userName: string;
 }
 
