@@ -30,6 +30,9 @@ export async function shortenUrl(originalUrl: string, customSlug?: string, expir
     const now = Timestamp.now();
     const expiration = expirationDate ? Timestamp.fromDate(new Date(expirationDate)) : null;
 
+    // Get user information
+    const userName = user?.displayName || user?.email?.split('@')[0] || 'Anonymous';
+
     // Create new shortened URL
     const urlDoc = await addDoc(collection(db, 'urls'), {
         originalUrl,
@@ -38,6 +41,7 @@ export async function shortenUrl(originalUrl: string, customSlug?: string, expir
         createdAt: now,
         expirationDate: expiration,
         userId: user?.uid ?? null,
+        userName: userName,
     });
 
     // Construct the full shortened URL using the base URL
@@ -51,5 +55,7 @@ export async function shortenUrl(originalUrl: string, customSlug?: string, expir
         visitCount: 0,
         createdAt: now.toDate(),
         expirationDate: expiration?.toDate() || null,
+        userId: user?.uid ?? null,
+        userName: userName,
     };
 }

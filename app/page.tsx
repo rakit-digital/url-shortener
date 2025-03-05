@@ -9,7 +9,7 @@ import { shortenUrl } from '@/lib/shortenUrl';
 import { formatDate, formatDateTime, isExpired } from '@/lib/utils';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, deleteDoc, doc, onSnapshot, query, where } from 'firebase/firestore';
-import { Copy, ExternalLink, Loader2, Trash2 } from 'lucide-react';
+import { Copy, ExternalLink, Loader2, Trash2, User } from 'lucide-react';
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
 
@@ -21,6 +21,8 @@ interface ShortenedUrl {
     visitCount: number;
     createdAt: string | Date | null;
     expirationDate: string | Date | null;
+    userId: string;
+    userName: string;
 }
 
 export default function Home() {
@@ -50,7 +52,9 @@ export default function Home() {
             }
 
             // If logged in, subscribe to Firestore updates
-            const q = query(collection(db, 'urls'), where('userId', '==', currentUser.uid));
+            // const q = query(collection(db, 'urls'), where('userId', '==', currentUser.uid));
+            const q = query(collection(db, 'urls'));
+
             const unsubscribe = onSnapshot(q, (snapshot) => {
                 const updatedUrls = snapshot.docs.map(doc => {
                     const data = doc.data();
@@ -60,6 +64,7 @@ export default function Home() {
                         shortenedUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/${data.slug}`,
                         createdAt: data.createdAt?.toDate() || null,
                         expirationDate: data.expirationDate?.toDate() || null,
+                        userName: data.userName || 'Unknown user'
                     };
                 }) as ShortenedUrl[];
                 setUrls(updatedUrls);
@@ -139,10 +144,10 @@ export default function Home() {
 
     return (
         <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mx-auto">
+            <div className="max-w-3xl mx-auto rounded">
                 <Card className="shadow-lg">
-                    <CardHeader className="bg-primary text-primary-foreground">
-                        <CardTitle className="text-4xl font-bold">URL Shortener</CardTitle>
+                    <CardHeader className="bg-primary text-primary-foreground rounded-t rounded-t-lg">
+                        <CardTitle className="text-4xl font-bold">Go by Rakit Digital</CardTitle>
                         <CardDescription className="text-primary-foreground/90">
                             Shorten, track, and manage your URLs
                         </CardDescription>
@@ -261,10 +266,16 @@ export default function Home() {
                                                         </Button>
                                                     </div>
                                                 </div>
-                                                <div className="text-sm text-muted-foreground">
-                                                    Original: {url.originalUrl}
+                                                <div className="text-lg font-medium text-primary mt-1">
+                                                    {url.shortenedUrl}
                                                 </div>
-                                                <div className="flex justify-between text-sm text-muted-foreground">
+                                                <div className="text-sm text-muted-foreground overflow-hidden">
+                                                    <span className="font-medium">Original:</span>{' '}
+                                                    <span className="overflow-hidden text-ellipsis block whitespace-nowrap max-w-full" title={url.originalUrl}>
+                                                        {url.originalUrl}
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-wrap justify-between gap-2 text-sm text-muted-foreground">
                                                     <span>Created: {formatDateTime(url.createdAt)}</span>
                                                     <span>Visits: {url.visitCount || 0}</span>
                                                     {url.expirationDate && (
@@ -272,6 +283,10 @@ export default function Home() {
                                                             Expires: {formatDate(url.expirationDate)}
                                                         </span>
                                                     )}
+                                                </div>
+                                                <div className="text-sm flex items-center text-muted-foreground pt-1 border-t">
+                                                    <User className="h-3 w-3 mr-1" />
+                                                    <span>Created by: {url.userName}</span>
                                                 </div>
                                             </div>
                                         </Card>

@@ -1,0 +1,13 @@
+{
+  // disable auto organize imports on save
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": false
+  },
+  "typescript.preferences.organizeImports": {
+    "sortImports": false,
+    "removeUnusedImports": false
+  },
+  "typescript.updateImportsOnPaste.enabled": false,
+  "typescript.updateImportsOnFileMove.enabled": "never",
+  "editor.formatOnSave": false,
+}

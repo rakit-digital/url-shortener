@@ -4,6 +4,7 @@ import { auth } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import Link from 'next/link';
+import Image from 'next/image'; 
 import { useEffect, useState } from 'react';
 import {
     NavigationMenu,
@@ -37,7 +38,17 @@ export default function Navbar() {
         <nav className="bg-primary py-4">
             <div className="container mx-auto px-4">
                 <div className="flex justify-between items-center">
-                    <Link href="/" className="text-white text-xl font-bold">URL Shortener</Link>
+                    <Link href="/" className="flex items-center space-x-3">
+                        <Image 
+                            src="https://rakit.digital/assets/branding/logo.png" 
+                            alt="Rakit Digital Logo" 
+                            width={32} 
+                            height={32} 
+                            className="rounded-sm"
+                        />
+                        <span className="text-white text-xl font-bold">Go by Rakit Digital</span>
+                    </Link>
+                    
                     {user ? (
                         <div className="flex items-center space-x-4">
                             <span className="text-white text-base mr-4">Welcome, {user.displayName || user.email}</span>
@@ -75,7 +86,7 @@ export default function Navbar() {
                         <div className="flex items-center space-x-4">
                             <Link href="/login" className="text-white text-base hover:text-gray-200 transition-colors">
                                 Login
-                                </Link>
+                            </Link>
                         </div>
                     )}
                 </div>
